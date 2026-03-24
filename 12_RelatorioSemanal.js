@@ -26,41 +26,94 @@ function _isValidEmail_(value) {
   return email.indexOf('@') !== -1 && email.indexOf('.') !== -1;
 }
 
+function _normalizeKey_(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function _splitEmails_(value) {
+  return String(value || '')
+    .split(/[;,]/)
+    .map(function (x) { return String(x || '').trim(); })
+    .filter(function (x) { return !!x; });
+}
+
 function _getSupervisorEmailMap_() {
   var sh = SpreadsheetApp.getActive().getSheetByName('Dados');
   if (!sh) throw new Error('Aba "Dados" não encontrada.');
 
   var data = sh.getDataRange().getValues();
-  var hdrIdx = -1, cSup = -1, cEmail = -1;
+  var hdrIdx = -1, cArea = -1, cSup = -1, cEmail = -1;
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i].map(function (x) { return String(x || '').trim(); });
     var lower = row.map(function (x) { return x.toLowerCase(); });
-    if (hdrIdx === -1) {
-      cSup = lower.indexOf('supervisor');
-      cEmail = lower.indexOf('email');
-      if (cSup !== -1) hdrIdx = i;
+
+    var idxSup = lower.indexOf('supervisor');
+    var idxEmail = lower.indexOf('email');
+    var idxArea = lower.indexOf('área');
+    if (idxArea === -1) idxArea = lower.indexOf('area');
+
+    if (idxSup !== -1 && idxEmail !== -1) {
+      hdrIdx = i;
+      cSup = idxSup;
+      cEmail = idxEmail;
+      cArea = idxArea !== -1 ? idxArea : 6; // fallback coluna G
+      break;
     }
-    if (hdrIdx !== -1) break;
   }
 
-  if (hdrIdx === -1 || cSup === -1) return {};
-  if (cEmail === -1 && data[hdrIdx].length > 9) cEmail = 9; // Coluna J
+  if (hdrIdx === -1 || cSup === -1 || cEmail === -1) return {};
 
+  // Regra solicitada: considerar até a linha 50 da planilha.
+  // data[] é 0-based e inclui cabeçalho.
+  var lastIdx = Math.min(49, data.length - 1);
+
+  // map[supervisor] = { emails: [], emailAreaPairs: [{email, area}] }
   var map = {};
-  for (var r = hdrIdx + 1; r < data.length; r++) {
-    var sup = String(data[r][cSup] || '').trim();
+  for (var r = hdrIdx + 1; r <= lastIdx; r++) {
+    var sup = String((data[r] && data[r][cSup]) || '').trim();
+    var area = String((data[r] && data[r][cArea]) || '').trim();
+    var rawEmail = String((data[r] && data[r][cEmail]) || '').trim();
     if (!sup) continue;
-    var email = (cEmail >= 0 && data[r].length > cEmail) ? String(data[r][cEmail] || '').trim() : '';
-    if (_isValidEmail_(email)) {
-      map[sup] = email;
-    } else if (cEmail === -1 && _isValidEmail_(sup)) {
-      // Se não há coluna de e-mail, use o próprio supervisor se ele já for um e-mail
-      map[sup] = sup;
-    } else {
-      map[sup] = '';
+
+    if (!map[sup]) {
+      map[sup] = {
+        emails: [],
+        emailAreaPairs: [],
+        _emailSeen: {},
+        _pairSeen: {}
+      };
+    }
+
+    var emails = _splitEmails_(rawEmail);
+    for (var e = 0; e < emails.length; e++) {
+      var em = emails[e];
+      if (!_isValidEmail_(em)) continue;
+
+      var emKey = _normalizeKey_(em);
+      var areaKey = _normalizeKey_(area);
+      var pairKey = emKey + '|' + areaKey;
+
+      // Se email + área repetir, mantém 1
+      if (!map[sup]._pairSeen[pairKey]) {
+        map[sup]._pairSeen[pairKey] = true;
+        map[sup].emailAreaPairs.push({ email: em, area: area });
+      }
+
+      // Para envio, deduplica por e-mail
+      if (!map[sup]._emailSeen[emKey]) {
+        map[sup]._emailSeen[emKey] = true;
+        map[sup].emails.push(em);
+      }
     }
   }
+
+  // Limpeza de campos internos
+  Object.keys(map).forEach(function (sup) {
+    delete map[sup]._emailSeen;
+    delete map[sup]._pairSeen;
+  });
+
   return map;
 }
 
@@ -90,20 +143,32 @@ function gerarRelatorioSemanalPorResponsavel() {
     var nome = String(destinatario || '').trim();
     if (!nome) return null;
 
-    var email = supervisorEmails[nome];
-    if (!email && _isValidEmail_(nome)) email = nome; // dest já é e-mail
-    if (!_isValidEmail_(email)) return null; // Ignora IDs ou textos sem e-mail
+    var supInfo = supervisorEmails[nome];
+    var emails = (supInfo && supInfo.emails) ? supInfo.emails.slice() : [];
+
+    // fallback: se o destinatário já vier como e-mail direto
+    if (!emails.length && _isValidEmail_(nome)) emails = [nome];
+    if (!emails.length) return null; // Ignora IDs ou textos sem e-mail
 
     if (!relatorios[nome]) {
       relatorios[nome] = {
         nome: nome,
-        email: email,
+        emails: emails,
         pendentes: [],
         fechadasSemana: [],
         prazosProximos: [],
         atrasadas: [],
         aguardandoValidacao: 0
       };
+    } else if (emails.length) {
+      // merge para evitar perda de destinatários em cenários de reuso
+      var merged = relatorios[nome].emails.concat(emails);
+      var uniq = {};
+      for (var m = 0; m < merged.length; m++) {
+        var k = _normalizeKey_(merged[m]);
+        if (k) uniq[k] = merged[m];
+      }
+      relatorios[nome].emails = Object.keys(uniq).map(function (k) { return uniq[k]; });
     }
     return relatorios[nome];
   }
@@ -166,16 +231,17 @@ function gerarRelatorioSemanalPorResponsavel() {
       corSla: corSla
     };
 
-     var destinatarios = [respForn, respPa]
+    var destinatarios = [respForn, respPa]
       .map(function (email) { return String(email || '').trim(); })
       .filter(function (email) { return !!email; })
       .filter(function (email, index, arr) { return arr.indexOf(email) === index; });
+
     for (var d = 0; d < destinatarios.length; d++) {
       var dest = ensure(destinatarios[d]);
       if (!dest) continue;
 
-      var aguardandoValidacao = etapaLower.indexOf('valida') !== -1;
-      if (aguardandoValidacao && !finalizadoPorStatus) {
+      var aguardandoValidacaoLinha = etapaLower.indexOf('valida') !== -1;
+      if (aguardandoValidacaoLinha && !finalizadoPorStatus) {
         dest.aguardandoValidacao += 1;
         continue;
       }
@@ -202,20 +268,25 @@ function enviarRelatorioSemanal() {
   for (var i = 0; i < destinatarios.length; i++) {
     var destKey = destinatarios[i];
     var info = relatorios[destKey];
-    if (!info || !info.email) continue;
+    if (!info || !info.emails || !info.emails.length) continue;
 
     var assunto = 'Relatório semanal de RNCs – ' + info.nome + ' – ' + dataAssunto;
     var html = _buildRelatorioHtml_(info, tz, platformLink);
     var texto = 'Resumo semanal de RNCs. Visualize em HTML se disponível.';
 
     MailApp.sendEmail({
-      to: info.email,
+      to: info.emails.join(','),
       subject: assunto,
       htmlBody: html,
       body: texto
     });
 
-    envios.push({ destinatario: info.email, pendentes: info.pendentes.length, fechadas: info.fechadasSemana.length });
+    envios.push({
+      destinatario: info.nome,
+      emails: info.emails.slice(),
+      pendentes: info.pendentes.length,
+      fechadas: info.fechadasSemana.length
+    });
   }
 
   return { totalDestinatarios: envios.length, envios: envios };
@@ -342,4 +413,28 @@ function criarGatilhoRelatorioSemanal() {
   }
   ScriptApp.newTrigger(handler).timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(8).create();
   return 'Gatilho semanal criado para a função "' + handler + '" (segunda-feira às 08h).';
+}
+
+
+function debugDestinatariosRelatorio() {
+  var mapa = _getSupervisorEmailMap_();
+
+  var out = Object.keys(mapa).sort().map(function (sup) {
+    var info = mapa[sup] || {};
+    var emails = (info.emails || []).slice().sort();
+
+    var areaSet = {};
+    (info.emailAreaPairs || []).forEach(function (p) {
+      var a = String((p && p.area) || '').trim();
+      if (a) areaSet[a] = true;
+    });
+
+    return {
+      supervisor: sup,
+      emails: emails.join(', '),
+      areas: Object.keys(areaSet).sort().join(', ')
+    };
+  });
+
+  Logger.log(JSON.stringify(out, null, 2));
 }
