@@ -201,6 +201,10 @@ function gerarRelatorioSemanalPorResponsavel() {
     var etapaValor = statusEtapa;
     var etapaLower = etapaValor.toLowerCase();
 
+    if (etapaLower.indexOf('cancelada') !== -1) {
+      continue;
+    }
+
     // Regras específicas para status de conclusão do plano (coluna U)
     var aguardandoValidacao = etapaLower.indexOf('aguardando valida') !== -1;
     if (aguardandoValidacao) {
@@ -269,6 +273,7 @@ function enviarRelatorioSemanal() {
     var destKey = destinatarios[i];
     var info = relatorios[destKey];
     if (!info || !info.emails || !info.emails.length) continue;
+    if (!info.pendentes.length && !info.fechadasSemana.length) continue;
 
     var assunto = 'Relatório semanal de RNCs – ' + info.nome + ' – ' + dataAssunto;
     var html = _buildRelatorioHtml_(info, tz, platformLink);
