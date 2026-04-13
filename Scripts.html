@@ -2326,6 +2326,8 @@ if (btnConfirmarSelecaoConclusao) btnConfirmarSelecaoConclusao.onclick = confirm
 /* ================== VISUALIZAR ================== */
 function abrirVisualizar(rnc, ano, mes){
   hide('view-home'); hide('view-criar'); hide('view-responder'); show('view-visualizar');
+  var splitEl = document.querySelector('#view-visualizar .split');
+  if (splitEl) splitEl.classList.add('print-left-only');
 
   // Limpa campos
   ['vis_rnc','vis_pv','vis_op','vis_origem','vis_fornecedor','vis_responsavel','vis_descricao','vis_motivo','vis_disposicao','vis_descCorrecao','vis_dataAbertura','vis_dataResposta','vis_pq1','vis_pq2','vis_pq3','vis_pq4','vis_pq5'].forEach(function(id){
@@ -2383,6 +2385,8 @@ function abrirVisualizar(rnc, ano, mes){
 
       // Bloco de resposta (exibe apenas se houver)
       var r = d.resposta || null;
+      var hasConclusao = Array.isArray(concA) && concA.length > 0;
+      if (splitEl) splitEl.classList.toggle('print-left-only', !(r && hasConclusao));
       if (r){
         if (body) body.classList.remove('hidden');
         if (empty) empty.classList.add('hidden');
