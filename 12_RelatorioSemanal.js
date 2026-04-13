@@ -68,20 +68,23 @@ function _getSupervisorEmailMap_() {
   // data[] é 0-based e inclui cabeçalho.
   var lastIdx = Math.min(49, data.length - 1);
 
-  // map[supervisor] = { emails: [], emailAreaPairs: [{email, area}] }
+  // map[supervisor] = { emails: [], emailAreaPairs: [{email, area}], targets: [{email, areas:[]}] }
   var map = {};
   for (var r = hdrIdx + 1; r <= lastIdx; r++) {
     var sup = String((data[r] && data[r][cSup]) || '').trim();
     var area = String((data[r] && data[r][cArea]) || '').trim();
-    var rawEmail = String((data[r] && data[r][cEmail]) || '').trim();
+    // Regra solicitada: e-mail sempre lido da coluna J (índice 9).
+    var rawEmail = String((data[r] && data[r][9]) || (data[r] && data[r][cEmail]) || '').trim();
     if (!sup) continue;
 
     if (!map[sup]) {
       map[sup] = {
         emails: [],
         emailAreaPairs: [],
+        targets: [],
         _emailSeen: {},
-        _pairSeen: {}
+        _pairSeen: {},
+        _targetSeen: {}
       };
     }
 
@@ -105,6 +108,19 @@ function _getSupervisorEmailMap_() {
         map[sup]._emailSeen[emKey] = true;
         map[sup].emails.push(em);
       }
+
+      if (!map[sup]._targetSeen[emKey]) {
+        map[sup]._targetSeen[emKey] = {
+          email: em,
+          areas: [],
+          _areaSeen: {}
+        };
+        map[sup].targets.push(map[sup]._targetSeen[emKey]);
+      }
+      if (area && !map[sup]._targetSeen[emKey]._areaSeen[areaKey]) {
+        map[sup]._targetSeen[emKey]._areaSeen[areaKey] = true;
+        map[sup]._targetSeen[emKey].areas.push(area);
+      }
     }
   }
 
@@ -112,6 +128,10 @@ function _getSupervisorEmailMap_() {
   Object.keys(map).forEach(function (sup) {
     delete map[sup]._emailSeen;
     delete map[sup]._pairSeen;
+    delete map[sup]._targetSeen;
+    (map[sup].targets || []).forEach(function (target) {
+      delete target._areaSeen;
+    });
   });
 
   return map;
@@ -137,6 +157,24 @@ function gerarRelatorioSemanalPorResponsavel() {
   var hoje = new Date();
   var semanaAtras = new Date(hoje.getTime() - 7 * 24 * 3600 * 1000);
   var supervisorEmails = _getSupervisorEmailMap_();
+  var areaSupervisores = {};
+  Object.keys(supervisorEmails).forEach(function (sup) {
+    var info = supervisorEmails[sup] || {};
+    var areas = [];
+    if (info.targets && info.targets.length) {
+      info.targets.forEach(function (t) {
+        (t.areas || []).forEach(function (a) { areas.push(a); });
+      });
+    } else {
+      (info.emailAreaPairs || []).forEach(function (p) { areas.push(p.area); });
+    }
+    areas.forEach(function (a) {
+      var key = _normalizeKey_(a);
+      if (!key) return;
+      if (!areaSupervisores[key]) areaSupervisores[key] = {};
+      areaSupervisores[key][sup] = true;
+    });
+  });
   var relatorios = {};
 
   function ensure(destinatario) {
@@ -145,6 +183,10 @@ function gerarRelatorioSemanalPorResponsavel() {
 
     var supInfo = supervisorEmails[nome];
     var emails = (supInfo && supInfo.emails) ? supInfo.emails.slice() : [];
+    var emailAreaPairs = (supInfo && supInfo.emailAreaPairs) ? supInfo.emailAreaPairs.slice() : [];
+    var targets = (supInfo && supInfo.targets) ? supInfo.targets.map(function (t) {
+      return { email: t.email, areas: (t.areas || []).slice() };
+    }) : [];
 
     // fallback: se o destinatário já vier como e-mail direto
     if (!emails.length && _isValidEmail_(nome)) emails = [nome];
@@ -154,6 +196,8 @@ function gerarRelatorioSemanalPorResponsavel() {
       relatorios[nome] = {
         nome: nome,
         emails: emails,
+        emailAreaPairs: emailAreaPairs,
+        targets: targets,
         pendentes: [],
         fechadasSemana: [],
         prazosProximos: [],
@@ -169,6 +213,48 @@ function gerarRelatorioSemanalPorResponsavel() {
         if (k) uniq[k] = merged[m];
       }
       relatorios[nome].emails = Object.keys(uniq).map(function (k) { return uniq[k]; });
+
+      if (emailAreaPairs && emailAreaPairs.length) {
+        var pairUniq = {};
+        var pairsMerged = (relatorios[nome].emailAreaPairs || []).concat(emailAreaPairs);
+        relatorios[nome].emailAreaPairs = pairsMerged.filter(function (pair) {
+          var emKey = _normalizeKey_(pair && pair.email);
+          if (!emKey) return false;
+          var arKey = _normalizeKey_(pair && pair.area);
+          var pairKey = emKey + '|' + arKey;
+          if (pairUniq[pairKey]) return false;
+          pairUniq[pairKey] = true;
+          return true;
+        });
+      }
+
+      if (targets && targets.length) {
+        var targetByEmail = {};
+        (relatorios[nome].targets || []).forEach(function (t) {
+          var k = _normalizeKey_(t && t.email);
+          if (!k) return;
+          if (!targetByEmail[k]) targetByEmail[k] = { email: t.email, areas: {} };
+          (t.areas || []).forEach(function (a) {
+            var ak = _normalizeKey_(a);
+            if (ak) targetByEmail[k].areas[a] = true;
+          });
+        });
+        targets.forEach(function (t) {
+          var k = _normalizeKey_(t && t.email);
+          if (!k) return;
+          if (!targetByEmail[k]) targetByEmail[k] = { email: t.email, areas: {} };
+          (t.areas || []).forEach(function (a) {
+            var ak = _normalizeKey_(a);
+            if (ak) targetByEmail[k].areas[a] = true;
+          });
+        });
+        relatorios[nome].targets = Object.keys(targetByEmail).map(function (k) {
+          return {
+            email: targetByEmail[k].email,
+            areas: Object.keys(targetByEmail[k].areas).sort()
+          };
+        });
+      }
     }
     return relatorios[nome];
   }
@@ -184,8 +270,6 @@ function gerarRelatorioSemanalPorResponsavel() {
     var statusEtapa = String(row[cols.status.index] || '').trim();
     var cliente = String(row[cols.cliente.index] || '').trim();
     var fornecedor = String(row[cols.fornecedor.index] || '').trim();
-    var respForn = String(row[cols.responsavelFornecimento.index] || '').trim();
-    var respPa = String(row[cols.responsavelPa.index] || '').trim();
     var corSla = String(row[cols.cor.index] || '').trim();
 
     var prazoControle = _parseSheetDate_(row[cols.prazoControle.index]);
@@ -235,14 +319,24 @@ function gerarRelatorioSemanalPorResponsavel() {
       corSla: corSla
     };
 
-    var destinatarios = [respForn, respPa]
-      .map(function (email) { return String(email || '').trim(); })
-      .filter(function (email) { return !!email; })
-      .filter(function (email, index, arr) { return arr.indexOf(email) === index; });
+    var areaKeyFornecedor = _normalizeKey_(fornecedor);
+    var supervisoresDaArea = areaKeyFornecedor && areaSupervisores[areaKeyFornecedor]
+      ? Object.keys(areaSupervisores[areaKeyFornecedor])
+      : [];
+    var destinatarios = supervisoresDaArea
+      .map(function (nomeSup) {
+        return { nome: String(nomeSup || '').trim(), areaReferencia: String(fornecedor || '').trim() };
+      })
+      .filter(function (d) { return !!d.nome; });
 
     for (var d = 0; d < destinatarios.length; d++) {
-      var dest = ensure(destinatarios[d]);
+      var destInfo = destinatarios[d];
+      var dest = ensure(destInfo.nome);
       if (!dest) continue;
+
+      var itemParaDest = {};
+      Object.keys(itemBase).forEach(function (k) { itemParaDest[k] = itemBase[k]; });
+      itemParaDest.areaReferencia = destInfo.areaReferencia;
 
       var aguardandoValidacaoLinha = etapaLower.indexOf('valida') !== -1;
       if (aguardandoValidacaoLinha && !finalizadoPorStatus) {
@@ -250,10 +344,10 @@ function gerarRelatorioSemanalPorResponsavel() {
         continue;
       }
 
-      if (pendente && !finalizadoPorStatus) dest.pendentes.push(itemBase);
-      if (!aguardandoCorrecaoConclusao && fechadaSemana) dest.fechadasSemana.push(itemBase);
-      if (prazoProximo) dest.prazosProximos.push(itemBase);
-      if (atrasada) dest.atrasadas.push(itemBase);
+      if (pendente && !finalizadoPorStatus) dest.pendentes.push(itemParaDest);
+      if (!aguardandoCorrecaoConclusao && fechadaSemana) dest.fechadasSemana.push(itemParaDest);
+      if (prazoProximo) dest.prazosProximos.push(itemParaDest);
+      if (atrasada) dest.atrasadas.push(itemParaDest);
     }
   }
 
@@ -268,36 +362,109 @@ function enviarRelatorioSemanal() {
   var platformLink = _getPlatformLink_();
 
   var envios = [];
+  function filterInfoByAreas(info, areas) {
+    var allowed = {};
+    (areas || []).forEach(function (a) {
+      var key = _normalizeKey_(a);
+      if (key) allowed[key] = true;
+    });
+
+    if (!Object.keys(allowed).length) return info;
+
+    function itemInAllowedAreas(item) {
+      var areaRefKey = _normalizeKey_(item && item.areaReferencia);
+      if (areaRefKey) return !!allowed[areaRefKey];
+      var fornecedorKey = _normalizeKey_(item && item.fornecedor);
+      return !!allowed[fornecedorKey];
+    }
+
+    var copy = {
+      nome: info.nome,
+      emails: (info.emails || []).slice(),
+      emailAreaPairs: (info.emailAreaPairs || []).slice(),
+      pendentes: (info.pendentes || []).filter(itemInAllowedAreas),
+      fechadasSemana: (info.fechadasSemana || []).filter(itemInAllowedAreas),
+      prazosProximos: (info.prazosProximos || []).filter(itemInAllowedAreas),
+      atrasadas: (info.atrasadas || []).filter(itemInAllowedAreas),
+      aguardandoValidacao: info.aguardandoValidacao || 0
+    };
+
+    return copy;
+  }
+
+  function getTargetsByEmail(info) {
+    if (info.targets && info.targets.length) {
+      return info.targets.map(function (t) {
+        return {
+          email: String((t && t.email) || '').trim(),
+          areas: (t && t.areas) ? t.areas.slice() : []
+        };
+      }).filter(function (t) { return !!t.email; });
+    }
+
+    var groups = {};
+    var out = [];
+
+    (info.emailAreaPairs || []).forEach(function (pair) {
+      var email = String((pair && pair.email) || '').trim();
+      if (!email) return;
+      var key = _normalizeKey_(email);
+      if (!groups[key]) groups[key] = { email: email, areas: {} };
+      var area = String((pair && pair.area) || '').trim();
+      if (area) groups[key].areas[area] = true;
+    });
+
+    Object.keys(groups).forEach(function (k) {
+      out.push({
+        email: groups[k].email,
+        areas: Object.keys(groups[k].areas).sort()
+      });
+    });
+
+    if (out.length) return out;
+
+    return (info.emails || [])
+      .map(function (email) { return String(email || '').trim(); })
+      .filter(function (email) { return !!email; })
+      .map(function (email) { return { email: email, areas: [] }; });
+  }
+
   var destinatarios = Object.keys(relatorios);
   for (var i = 0; i < destinatarios.length; i++) {
     var destKey = destinatarios[i];
     var info = relatorios[destKey];
     if (!info || !info.emails || !info.emails.length) continue;
     if (!info.pendentes.length && !info.fechadasSemana.length) continue;
+    var targets = getTargetsByEmail(info);
+    for (var t = 0; t < targets.length; t++) {
+      var target = targets[t];
+      var infoTarget = filterInfoByAreas(info, target.areas);
+      if (!infoTarget.pendentes.length && !infoTarget.fechadasSemana.length) continue;
+      var assunto = 'Relatório semanal de RNCs – ' + info.nome + ' – ' + dataAssunto;
+      var html = _buildRelatorioHtml_(infoTarget, tz, platformLink, target.areas);
+      var texto = 'Resumo semanal de RNCs. Visualize em HTML se disponível.';
 
-    var assunto = 'Relatório semanal de RNCs – ' + info.nome + ' – ' + dataAssunto;
-    var html = _buildRelatorioHtml_(info, tz, platformLink);
-    var texto = 'Resumo semanal de RNCs. Visualize em HTML se disponível.';
+      MailApp.sendEmail({
+        to: target.email,
+        subject: assunto,
+        htmlBody: html,
+        body: texto
+      });
 
-    MailApp.sendEmail({
-      to: info.emails.join(','),
-      subject: assunto,
-      htmlBody: html,
-      body: texto
-    });
-
-    envios.push({
-      destinatario: info.nome,
-      emails: info.emails.slice(),
-      pendentes: info.pendentes.length,
-      fechadas: info.fechadasSemana.length
-    });
+      envios.push({
+        destinatario: info.nome,
+        email: target.email,
+        areas: (target.areas || []).slice(),
+        pendentes: infoTarget.pendentes.length,
+        fechadas: infoTarget.fechadasSemana.length
+      });
+    }
   }
 
   return { totalDestinatarios: envios.length, envios: envios };
 }
 
-function _buildRelatorioHtml_(info, tz, platformLink) {
+function _buildRelatorioHtml_(info, tz, platformLink, areas) {
   function esc(val) {
     return String(val == null ? '' : val)
       .replace(/&/g, '&amp;')
@@ -378,6 +545,7 @@ function _buildRelatorioHtml_(info, tz, platformLink) {
   });
 
   var resumoStatus = [
+    ((areas && areas.length) ? '<p style="margin:4px 0;"><strong>Áreas:</strong> ' + esc(areas.join(', ')) + '</p>' : ''),
     '<p style="margin:4px 0;"><strong>No prazo:</strong> <span style="color:#22863a; font-weight:bold;">' + pendentesNoPrazo.length + '</span></p>',
     '<p style="margin:4px 0;"><strong>Atrasadas:</strong> <span style="color:#d73a49; font-weight:bold;">' + info.atrasadas.length + '</span></p>',
     '<p style="margin:4px 0;"><strong>Próximos 7 dias:</strong> ' + info.prazosProximos.length + '</p>',
