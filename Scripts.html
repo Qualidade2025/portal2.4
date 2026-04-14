@@ -691,6 +691,37 @@ function autoResizeWithin(container){
 }
 
 function autoResizePrintFields(){
+  function resizePrintField(el){
+    if (!el) return;
+    var cs = window.getComputedStyle(el);
+    var lineHeight = parseFloat(cs.lineHeight);
+    if (!lineHeight || !isFinite(lineHeight)) lineHeight = 20;
+    var padding = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    var border = (parseFloat(cs.borderTopWidth) || 0) + (parseFloat(cs.borderBottomWidth) || 0);
+    var minHeight = Math.ceil(lineHeight + padding + border);
+    var hasValueProp = typeof el.value === 'string';
+    var content = hasValueProp ? String(el.value || '') : String(el.textContent || '');
+    var hasContent = content.trim().length > 0;
+
+    el.style.overflowY = 'hidden';
+    el.style.resize = 'none';
+
+    if (hasValueProp){
+      var originalValue = el.value;
+      el.value = hasContent ? (originalValue + '\n') : '';
+      el.style.height = 'auto';
+      var measuredHeight = el.scrollHeight;
+      el.value = originalValue;
+      el.style.height = 'auto';
+      el.style.height = Math.max(hasContent ? measuredHeight : minHeight, minHeight) + 'px';
+      return;
+    }
+
+    el.style.height = 'auto';
+    var fallbackHeight = hasContent ? (el.scrollHeight + lineHeight) : minHeight;
+    el.style.height = Math.max(fallbackHeight, minHeight) + 'px';
+  }
+
   var fixedIds = [
     'vis_descricao',
     'vis_descCorrecao',
@@ -703,11 +734,7 @@ function autoResizePrintFields(){
   ];
   fixedIds.forEach(function(id){
     var el = document.getElementById(id);
-    if (!el) return;
-    el.style.overflowY = 'hidden';
-    el.style.resize = 'none';
-    el.style.height = 'auto';
-    el.style.height = el.scrollHeight + 'px';
+    resizePrintField(el);
   });
 
   var viewVisualizar = document.getElementById('view-visualizar');
@@ -715,10 +742,7 @@ function autoResizePrintFields(){
   Array.prototype.forEach.call(
     viewVisualizar.querySelectorAll('#vis_solucoesList textarea.autoresize'),
     function(el){
-      el.style.overflowY = 'hidden';
-      el.style.resize = 'none';
-      el.style.height = 'auto';
-      el.style.height = el.scrollHeight + 'px';
+      resizePrintField(el);
     }
   );
 }
