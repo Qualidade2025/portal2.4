@@ -18,6 +18,7 @@
     --shadow:0 15px 40px rgba(0,0,0,0.18);
     --overlay:rgba(0,0,0,0.45);
     --row-hover:#eef2ff;
+    --visualizar-print-width:277mm;
   }
   html[data-theme="dark"]{
     color-scheme: dark;
@@ -126,6 +127,25 @@
 
   /* Textareas auto-redimensionáveis (altura) */
   .autoresize{resize:none;overflow:hidden}
+
+  /* Pré-estado de impressão para medir alturas no mesmo layout do print */
+  #view-visualizar.is-printing{
+    width:var(--visualizar-print-width) !important;
+    max-width:var(--visualizar-print-width) !important;
+    font-size:11px;
+    line-height:1.2;
+  }
+  #view-visualizar.is-printing .split{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    align-items:start;
+    width:100%;
+  }
+  #view-visualizar.is-printing .panel{
+    margin:0 !important;
+    padding:6px !important;
+  }
 
   /* Linhas de Solução: Ação + metadados (Responsável/Prazo empilhados) */
   .grid-sln{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px;align-items:start}
@@ -239,8 +259,8 @@ input[type="file"] {
     #view-visualizar > :not(.split){display:none !important}
     #view-visualizar{
       position:static !important;
-      width:100% !important;
-      max-width:100% !important;
+      width:var(--visualizar-print-width) !important;
+      max-width:var(--visualizar-print-width) !important;
       border:0 !important;
       box-shadow:none !important;
       margin:0 !important;
@@ -275,6 +295,11 @@ input[type="file"] {
     /* Sem resposta/conclusão: imprime só a CONSTATAÇÃO, mantendo coluna à esquerda */
     #view-visualizar .split.print-left-only .panel-resposta{display:none !important}
     #view-visualizar .split.print-left-only .panel-constatacao{grid-column:1 / 2}
+
+    #view-visualizar textarea.autoresize{
+      overflow:visible !important;
+      max-height:none !important;
+    }
   }
 
 
