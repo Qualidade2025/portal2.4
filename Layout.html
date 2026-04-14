@@ -146,6 +146,14 @@
     margin:0 !important;
     padding:6px !important;
   }
+  #view-visualizar.is-printing textarea{
+    overflow:hidden !important;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+  }
+  #view-visualizar.is-printing textarea::-webkit-scrollbar{
+    display:none;
+  }
 
   /* Linhas de Solução: Ação + metadados (Responsável/Prazo empilhados) */
   .grid-sln{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px;align-items:start}
@@ -296,8 +304,16 @@ input[type="file"] {
     #view-visualizar .split.print-left-only .panel-resposta{display:none !important}
     #view-visualizar .split.print-left-only .panel-constatacao{grid-column:1 / 2}
 
+    #view-visualizar textarea{
+      overflow:hidden !important;
+      scrollbar-width:none;
+      -ms-overflow-style:none;
+      max-height:none !important;
+    }
+    #view-visualizar textarea::-webkit-scrollbar{
+      display:none;
+    }
     #view-visualizar textarea.autoresize{
-      overflow:visible !important;
       max-height:none !important;
     }
   }
