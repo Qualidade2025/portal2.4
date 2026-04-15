@@ -2477,8 +2477,7 @@ function abrirVisualizar(rnc, ano, mes){
 
       // Bloco de resposta (exibe apenas se houver)
       var r = d.resposta || null;
-      var hasConclusao = Array.isArray(concA) && concA.length > 0;
-      if (splitEl) splitEl.classList.toggle('print-left-only', !(r && hasConclusao));
+      if (splitEl) splitEl.classList.toggle('print-left-only', !r);
       if (r){
         if (body) body.classList.remove('hidden');
         if (empty) empty.classList.add('hidden');
