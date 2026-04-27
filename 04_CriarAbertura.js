@@ -65,41 +65,36 @@ function criarRNC_SalvarBasico(token, pv, op, clienteLivre, origem, fornecedor, 
 
     // ===== DRIVE =====
     var driveError = '';
-    var driveDebug = [];
     var fileUrl = '', monthFolderUrl = '';
 
-    try {
-      var driveJson = _saveRncJsonToDrive_(rncId, {
-        rncId: rncId,
-        numero: numero,
-        dataHoraIso: new Date().toISOString(),
-        pv: pv,
-        op: op,
-        responsavel: responsavel,
-        origem: origem,
-        fornecedor: fornecedor,
-        descricao: descricao,
-        motivo: motivo,
-        disposicao: disposicao,
-        descricaoAcaoCorretiva: descCorrecao,
-        areaUsuario: area,
-        usuarioAbertura: sess.usuario || ''
-      });
-      if (driveJson && driveJson.error) driveError = String(driveJson.error);
-      if (driveJson && Array.isArray(driveJson.debug)) driveDebug = driveDebug.concat(driveJson.debug);
-      fileUrl = (driveJson && driveJson.fileUrl) || '';
-      monthFolderUrl = (driveJson && driveJson.monthFolderUrl) || (driveJson && driveJson.monthFolder && driveJson.monthFolder.getUrl()) || '';
-    } catch(e) {
-      driveError = 'JSON: ' + String(e);
-      driveDebug.push('[JSON-RNC ' + rncId + '] Exceção em criarRNC_SalvarBasico: ' + String(e));
+  var driveJson = _saveRncJsonToDrive_(rncId, {
+      rncId: rncId,
+      numero: numero,
+      dataHoraIso: new Date().toISOString(),
+      pv: pv,
+      op: op,
+      responsavel: responsavel,
+      origem: origem,
+      fornecedor: fornecedor,
+      descricao: descricao,
+      motivo: motivo,
+      disposicao: disposicao,
+      descricaoAcaoCorretiva: descCorrecao,
+      areaUsuario: area,
+      usuarioAbertura: sess.usuario || ''
+    });
+    if (driveJson && driveJson.error) {
+      driveError = String(driveJson.error);
+      throw new Error('Falha ao salvar JSON da RNC no Drive: ' + driveError);
     }
+    fileUrl = (driveJson && driveJson.fileUrl) || '';
+    monthFolderUrl = (driveJson && driveJson.monthFolderUrl) || (driveJson && driveJson.monthFolder && driveJson.monthFolder.getUrl()) || '';
 
     var attachRes = { items: [] };
-    try {
-      attachRes = _saveAttachmentsToDrive_(rncId, anexos); // sem sufixo na abertura
-      if (attachRes && attachRes.error) driveError = (driveError ? driveError + ' | ' : '') + String(attachRes.error);
-    } catch(e) {
-      driveError = (driveError ? driveError + ' | ' : '') + 'Anexos: ' + String(e);
+    attachRes = _saveAttachmentsToDrive_(rncId, anexos); // sem sufixo na abertura
+    if (attachRes && attachRes.error) {
+      driveError = String(attachRes.error);
+      throw new Error('Falha ao salvar anexos da RNC no Drive: ' + driveError);
     }
 
     return {
@@ -111,7 +106,6 @@ function criarRNC_SalvarBasico(token, pv, op, clienteLivre, origem, fornecedor, 
       fileUrl: fileUrl,
       monthFolderUrl: monthFolderUrl,
       driveError: driveError,
-      driveDebug: driveDebug,
       anexos: (attachRes && attachRes.items) ? attachRes.items : []
     };
   } catch (e) {
