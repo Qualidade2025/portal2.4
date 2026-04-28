@@ -47,7 +47,7 @@
   html[data-theme="dark"] ::-webkit-scrollbar-track{
     background:transparent;
   }
-  body{font-family:Arial,Helvetica,sans-serif;margin:24px;max-width:1200px;background:var(--bg);color:var(--text)}
+  body{font-family:Arial,Helvetica,sans-serif;margin:8px 24px 24px;max-width:1200px;background:var(--bg);color:var(--text)}
   h1,h2,h3,h4,h5,h6{color:var(--text)}
   .card{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;background:var(--surface)}
   h1{margin:0 0 12px}
@@ -69,10 +69,13 @@
   .header-3col .left{grid-column:1}
   .logo-wrap{display:flex;justify-content:center;margin-bottom:4px}
   .logo-img{max-width:520px;max-height:220px;width:100%;height:auto;object-fit:contain;display:block}
-  .home-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px}
-  .home-actions{display:flex;flex-direction:column;align-items:flex-end;justify-self:end}
-  .home-actions-row{display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:8px}
-  .home-actions-row > button{margin-left:0 !important;white-space:nowrap;flex:0 0 auto}
+  .home-header{display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:12px}
+  .home-actions{display:flex;flex-direction:column;align-items:flex-end;justify-self:end;gap:6px}
+  .home-actions-row{display:grid;grid-template-columns:repeat(2,44px);justify-content:end;gap:6px}
+  .home-actions-row > button{margin-left:0 !important;white-space:nowrap}
+  .home-icon-btn{width:44px;height:36px;padding:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;line-height:1;font-weight:500}
+  .home-theme-btn{align-self:auto}
+  .home-add-btn{width:94px}
   .home-logo{margin:0;justify-self:center}
   .login-logo{max-width:360px}
   .login-aviso-bloco{max-height:calc(1.4em * 6);overflow-y:auto;padding-right:8px}
@@ -264,10 +267,8 @@ input[type="file"] {
   pointer-events: auto !important;
 }
 
-  .theme-toggle{min-width:40px;padding:8px 10px;line-height:1}
+  .theme-toggle{min-width:0;padding:0;line-height:1}
   .theme-toggle-icon{display:inline-block;line-height:1}
-  html[data-theme="light"] .theme-toggle-icon{filter:grayscale(1) brightness(3)}
-  html[data-theme="dark"] .theme-toggle-icon{filter:grayscale(1) brightness(3)}
 
   html[data-theme="dark"] .btn{color:#0f172a;font-weight:600}
   .logo-dark{display:none}
