@@ -11,11 +11,30 @@
     </div>
     <div class="home-actions">
       <div class="home-actions-row">
+
+        <button class="btn-grey home-icon-btn" id="btnInstrucoes" title="Instruções" aria-label="Instruções">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 10v8"/>
+            <circle cx="12" cy="6.5" r="1" fill="currentColor" stroke="none"/>
+          </svg>
+        </button>
+
+        <button class="btn-grey theme-toggle home-icon-btn home-theme-btn" id="btnTema" data-theme-toggle="1" title="Modo claro/escuro" aria-label="Modo claro/escuro"><span class="theme-toggle-icon" aria-hidden="true">◐</span></button>
+
         <!-- NOVO: botão Atualizar (recarrega as tabelas sem derrubar a sessão) -->
         <button class="btn-grey home-icon-btn" id="btnAtualizar" title="Atualizar" aria-label="Atualizar">↻</button>
-        <button class="btn-grey home-icon-btn" id="btnInstrucoes" title="Instruções" aria-label="Instruções">i</button>
-        <button class="btn-grey home-icon-btn" id="btnSair" title="Sair" aria-label="Sair">⎋</button>
-        <button class="btn-grey theme-toggle home-icon-btn home-theme-btn" id="btnTema" data-theme-toggle="1" title="Modo claro/escuro" aria-label="Modo claro/escuro"><span class="theme-toggle-icon" aria-hidden="true">◐</span></button>
+
+        <button class="btn-grey home-icon-btn" id="btnSair" title="Sair" aria-label="Sair">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 3h10v18H4z"/>
+            <circle cx="8" cy="12" r="0.8" fill="currentColor" stroke="none"/>
+            <path d="M10 12h10"/>
+            <path d="M17 8l4 4-4 4"/>
+          </svg>
+        </button>
+
+
+      
       </div>
       <button class="btn home-icon-btn home-add-btn" id="btnCriar" title="Criar RNC" aria-label="Criar RNC">+</button>
       <div id="logoutMsg" class="muted" style="margin-top:6px;text-align:right"></div>
