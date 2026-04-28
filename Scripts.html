@@ -41,7 +41,15 @@ function updateThemeButtonLabel(theme){
   if (!buttons || !buttons.length) return;
   var isDark = theme === 'dark';
   Array.prototype.forEach.call(buttons, function(btn){
-    btn.textContent = isDark ? '☀️' : '🌙';
+    var icon = btn.querySelector('.theme-toggle-icon');
+    if (!icon){
+      icon = document.createElement('span');
+      icon.className = 'theme-toggle-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      btn.textContent = '';
+      btn.appendChild(icon);
+    }
+    icon.textContent = isDark ? '☀️' : '🌙';
     btn.setAttribute('aria-label', isDark ? 'Ativar modo claro' : 'Ativar modo escuro');
     btn.setAttribute('title', isDark ? 'Ativar modo claro' : 'Ativar modo escuro');
   });
