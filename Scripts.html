@@ -1899,13 +1899,15 @@ async function enviarCriar(){
   // Abertura: sem sufixo (numeração por duplicidade no Drive é garantida no back-end)
 
   if (!EDIT_MODE){
-    document.getElementById('msgCriar').textContent = 'Salvando...';
+    beginGlobalLoading();
     google.script.run
       .withFailureHandler(function(err){
+        endGlobalLoading();
         setCriarSendLock(false);
         document.getElementById('msgCriar').textContent = (err && err.message) ? err.message : String(err);
       })
       .withSuccessHandler(function(res){
+        endGlobalLoading();
         setCriarSendLock(false);
         var html = 'RNC criada: <b>' + res.rncId + '</b> — Fornecedor: ' + res.fornecedor + ' — Motivo: ' + res.motivo + '.';
         if (res.fileUrl)        html += ' &nbsp;|&nbsp; <a class="link" href="'+res.fileUrl+'" target="_blank">Abrir JSON</a>';
@@ -1925,13 +1927,15 @@ async function enviarCriar(){
       })
       .criarRNC_SalvarBasico(TOKEN, pv, op, '', origem, fornecedor, responsavel, descricao, motivo, disposicao, descCorrecao, anexos);
   } else {
-    document.getElementById('msgCriar').textContent = 'Reenviando...';
+    beginGlobalLoading();
     google.script.run
       .withFailureHandler(function(err){
+        endGlobalLoading();
         setCriarSendLock(false);
         document.getElementById('msgCriar').textContent = (err && err.message) ? err.message : String(err);
       })
       .withSuccessHandler(function(res){
+        endGlobalLoading();
         setCriarSendLock(false);
         var html = 'RNC <b>' + EDIT_RNC_ID + '</b> reenviada para validação.';
         if (res.fileUrl)        html += ' &nbsp;|&nbsp; <a class="link" href="'+res.fileUrl+'" target="_blank">Abrir JSON</a>';
@@ -1979,17 +1983,20 @@ if (btnEnviarImprocedente) btnEnviarImprocedente.onclick = function(){
     anexos = await readFilesAsBase64(files, 10);
   }
 
-  document.getElementById('respMsgImprocedente').textContent = 'Enviando improcedente...';
+  beginGlobalLoading();
   google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       document.getElementById('respMsgImprocedente').textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       document.getElementById('respMsgImprocedente').textContent = 'Improcedente enviada. Aguardando validação da Qualidade.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 800);
     })
     .responderRNC_Improcedente(TOKEN, rnc, motivo, anexos);
   })().catch(function(err){
+    endGlobalLoading();
     document.getElementById('respMsgImprocedente').textContent = (err && err.message) ? err.message : String(err);
   });
 };
@@ -2065,12 +2072,14 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
       return;
     }
 
-    document.getElementById('respMsg').textContent = 'Enviando evidência...';
+    beginGlobalLoading();
     google.script.run
       .withFailureHandler(function(err){
+        endGlobalLoading();
         document.getElementById('respMsg').textContent = (err && err.message) ? err.message : String(err);
       })
       .withSuccessHandler(function(){
+        endGlobalLoading();
         document.getElementById('respMsg').textContent = 'Evidência enviada. Aguardando validação da Qualidade.';
         setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 800);
       })
@@ -2178,12 +2187,14 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     return a;
   });
 
-  document.getElementById('respMsg').textContent = 'Enviando resposta...';
+  beginGlobalLoading();
   google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       document.getElementById('respMsg').textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       document.getElementById('respMsg').textContent = 'Resposta enviada. Aguardando validação da Qualidade.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 800);
     })
@@ -2194,12 +2205,14 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
 document.getElementById('btnValidar').onclick = function(){
   var rnc = this.dataset.rnc || document.getElementById('resp_rnc').value;
   if (!rnc) return;
-  document.getElementById('qualidadeMsg').textContent = 'Validando...';
+  beginGlobalLoading();
   google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       document.getElementById('qualidadeMsg').textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       document.getElementById('qualidadeMsg').textContent = 'RNC validada com sucesso.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 600);
     })
@@ -2216,12 +2229,14 @@ document.getElementById('btnEnviarRetorno').onclick = function(){
   if (!rnc) return;
   if (!motivo){ alert('Informe um motivo válido.'); return; }
 
-  document.getElementById('qualidadeMsg').textContent = 'Enviando motivo...';
+  beginGlobalLoading();
   google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       document.getElementById('qualidadeMsg').textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       document.getElementById('qualidadeMsg').textContent = 'Motivo registrado e RNC devolvida para correção.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 600);
     })
@@ -2341,12 +2356,14 @@ function validarConclusaoComSelecao(selecionadas, retornoMsg){
   var msgEl = document.getElementById('qualidadeMsgResp2');
   if (!rnc) return;
 
-  if (msgEl) msgEl.textContent = 'Validando conclusão...';
+  beginGlobalLoading();
   google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       if (msgEl) msgEl.textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(res){
+      endGlobalLoading();
       if (msgEl) {
         msgEl.textContent = (res && res.etapa === 'Aguardando conclusão') ? 'Ações validadas. Próximo plano registrado.' : 'Conclusão validada.';
       }
@@ -2392,7 +2409,7 @@ if (btnValidarResp2) btnValidarResp2.onclick = function(){
   if (!rnc) return;
 
   var msgEl = document.getElementById('qualidadeMsgResp2');
-  if (msgEl) msgEl.textContent = (mode === 'conclusao' ? '' : 'Validando resposta...');
+  if (mode !== 'conclusao') beginGlobalLoading();
 
   if (mode === 'conclusao'){
     var concluidasPendentes = getIndicesConcluidosPendentes();
@@ -2408,9 +2425,11 @@ if (btnValidarResp2) btnValidarResp2.onclick = function(){
 
   var runner = google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       if (msgEl) msgEl.textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       if (msgEl) msgEl.textContent = 'Resposta validada.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 700);
     });
@@ -2434,13 +2453,15 @@ if (btnEnviarRetornoResp2) btnEnviarRetornoResp2.onclick = function(){
   if (!motivo){ alert('Informe um motivo válido.'); return; }
 
   var msgEl = document.getElementById('qualidadeMsgResp2');
-  msgEl.textContent = (mode === 'conclusao' ? 'Enviando motivo (conclusão)...' : 'Enviando motivo...');
+  beginGlobalLoading();
 
   var runner = google.script.run
     .withFailureHandler(function(err){
+      endGlobalLoading();
       msgEl.textContent = (err && err.message) ? err.message : String(err);
     })
     .withSuccessHandler(function(){
+      endGlobalLoading();
       msgEl.textContent = 'Motivo registrado.';
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 700);
     });
