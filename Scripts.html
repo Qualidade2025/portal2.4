@@ -2002,6 +2002,13 @@ if (btnEnviarImprocedente) btnEnviarImprocedente.onclick = function(){
 };
 
 document.getElementById('btnSalvarResposta').onclick = async function(){
+  var setRespMsg = function(msg){
+    var el = document.getElementById('respMsg');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.remove('hidden');
+    el.style.display = 'inline';
+  };
   if (RESP_MODE === 'concluir'){
     var rnc = document.getElementById('resp_rnc').value;
     var conclChk = document.getElementById('resp_concluida');
@@ -2015,22 +2022,26 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     var possuiConcExistente = Array.isArray(ANEXOS_CONCLUSAO) && ANEXOS_CONCLUSAO.length > 0;
 
     if (!Array.isArray(solucoesConc) || !solucoesConc.length){
-      document.getElementById('respMsg').textContent = 'Nenhum plano de ação disponível para conclusão.';
+      setRespMsg('Nenhum plano de ação disponível para conclusão.');
       return;
     }
 
+    if ((!conclChk || !conclChk.checked) && !possuiConcExistente && !temNovosArquivos){
+      setRespMsg('Para concluir a RNC, marque o checkbox e anexe ao menos uma evidência.');
+      return;
+    }
     if (!conclChk || !conclChk.checked){
-      document.getElementById('respMsg').textContent = 'Confirme que as ações foram concluídas marcando o checkbox.';
+      setRespMsg('Para concluir a RNC, marque o checkbox "Ações já foram concluídas".');
       return;
     }
     if (!possuiConcExistente && !temNovosArquivos){
-      document.getElementById('respMsg').textContent = 'Anexe ao menos um arquivo de evidência.';
+      setRespMsg('Para concluir a RNC, anexe ao menos um arquivo de evidência.');
       return;
     }
     if (temNovosArquivos){
       for (var i=0;i<files.length;i++){
         if (files[i].size > 10*1024*1024){
-          document.getElementById('respMsg').textContent = 'Arquivo acima de 10MB: ' + files[i].name;
+          setRespMsg('Arquivo acima de 10MB: ' + files[i].name);
           return;
         }
       }
@@ -2061,14 +2072,14 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
 
     var selecionadasConc = await solicitarSelecaoConclusao(itensSelecaoConc, 'Selecione as ações concluídas', 'Marque os planos concluídos. Planos já validados estão bloqueados.');
     if (!selecionadasConc){
-      document.getElementById('respMsg').textContent = 'Envio cancelado.';
+      setRespMsg('Envio cancelado.');
       return;
     }
 
     acoesConcluidasConc = selecionadasConc.filter(function(idx){ return !validadasConc.has(idx); });
 
     if (totalNaoValidadas > 0 && !acoesConcluidasConc.length){
-      document.getElementById('respMsg').textContent = 'Selecione ao menos um plano de ação não validado.';
+      setRespMsg('Selecione ao menos um plano de ação não validado.');
       return;
     }
 
@@ -2076,11 +2087,11 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     google.script.run
       .withFailureHandler(function(err){
         endGlobalLoading();
-        document.getElementById('respMsg').textContent = (err && err.message) ? err.message : String(err);
+        setRespMsg((err && err.message) ? err.message : String(err));
       })
       .withSuccessHandler(function(){
         endGlobalLoading();
-        document.getElementById('respMsg').textContent = 'Evidência enviada. Aguardando validação da Qualidade.';
+        setRespMsg('Evidência enviada. Aguardando validação da Qualidade.');
         setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 800);
       })
       .concluirRNC_EnviarEvidencias(TOKEN, rnc, anexos, acoesConcluidasConc);
@@ -2097,15 +2108,15 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
   var concluida = !!(document.getElementById('resp_concluida') && document.getElementById('resp_concluida').checked);
 
   if (pq1.length < 10){
-    document.getElementById('respMsg').textContent = 'Informe o 1º Porquê com ao menos 10 caracteres.';
+     setRespMsg('Informe o 1º Porquê com ao menos 10 caracteres.');
     return;
   }
   if (pq2.length < 10){
-    document.getElementById('respMsg').textContent = 'Informe o 2º Porquê com ao menos 10 caracteres.';
+    setRespMsg('Informe o 2º Porquê com ao menos 10 caracteres.');
     return;
   }
   if (pq3.length < 10){
-    document.getElementById('respMsg').textContent = 'Informe o 3º Porquê com ao menos 10 caracteres.';
+    setRespMsg('Informe o 3º Porquê com ao menos 10 caracteres.');
     return;
   }
 
@@ -2120,37 +2131,41 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     if (!ac && !rs && !pr) continue;
         possuiPlano = true;
     if (ac.length < 10){
-      document.getElementById('respMsg').textContent = 'A ação proposta na linha '+(i+1)+' deve ter ao menos 10 caracteres.';
+      setRespMsg('A ação proposta na linha '+(i+1)+' deve ter ao menos 10 caracteres.');
       return;
     }
     if (!rs){
-      document.getElementById('respMsg').textContent = 'Informe o responsável na linha '+(i+1)+'.';
+      setRespMsg('Informe o responsável na linha '+(i+1)+'.');
       return;
     }
     if (!pr){
-      document.getElementById('respMsg').textContent = 'Informe o prazo na linha '+(i+1)+' no formato dd/mm/aaaa.';
+      setRespMsg('Informe o prazo na linha '+(i+1)+' no formato dd/mm/aaaa.');
       return;
     }
     if (!isValidDateBR(pr)){
-      document.getElementById('respMsg').textContent = 'Prazo inválido na linha '+(i+1)+'. Use dd/mm/aaaa.';
+      setRespMsg('Prazo inválido na linha '+(i+1)+'. Use dd/mm/aaaa.');
       return;
     }
     solucoes.push({ acao: ac, responsavel: rs, prazo: pr });
   }
 
   if (!possuiPlano){
-    document.getElementById('respMsg').textContent = 'Informe ao menos uma ação proposta com responsável e prazo.';
+    setRespMsg('Informe ao menos uma ação proposta com responsável e prazo.');
     return;
   }
 
   var files = document.getElementById('resp_evid').files;
   if (concluida && (!files || !files.length)){
-    document.getElementById('respMsg').textContent = 'Para marcar as ações como concluídas, anexe uma evidência.';
+    setRespMsg('Para marcar as ações como concluídas, anexe uma evidência.');
+    return;
+  }
+  if (!concluida && files && files.length){
+    setRespMsg('Para enviar evidência de conclusão, marque o checkbox "Ações já foram concluídas".');
     return;
   }
   for (var i=0;i<files.length;i++){
     if (files[i].size > 10*1024*1024){
-      document.getElementById('respMsg').textContent = 'Arquivo acima de 10MB: ' + files[i].name;
+      setRespMsg('Arquivo acima de 10MB: ' + files[i].name);
       return;
     }
   }
@@ -2163,7 +2178,7 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
       var itensSelecaoResp = solucoes.map(function(s, idx){ return { indice: idx, solucao: s }; });
       var selecionadasResp = await solicitarSelecaoConclusao(itensSelecaoResp, 'Selecione as ações concluídas', 'Marque quais planos de ação já estão concluídos.');
       if (!selecionadasResp){
-        document.getElementById('respMsg').textContent = 'Envio cancelado.';
+        setRespMsg('Envio cancelado.');
         return;
       }
       acoesConcluidasResp = selecionadasResp;
@@ -2172,7 +2187,7 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     }
 
     if (!acoesConcluidasResp.length){
-      document.getElementById('respMsg').textContent = 'Selecione quais ações foram concluídas.';
+      setRespMsg('Selecione quais ações foram concluídas.');
       return;
     }
   }
@@ -2191,11 +2206,11 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
   google.script.run
     .withFailureHandler(function(err){
       endGlobalLoading();
-      document.getElementById('respMsg').textContent = (err && err.message) ? err.message : String(err);
+      setRespMsg((err && err.message) ? err.message : String(err));
     })
     .withSuccessHandler(function(){
       endGlobalLoading();
-      document.getElementById('respMsg').textContent = 'Resposta enviada. Aguardando validação da Qualidade.';
+      setRespMsg('Resposta enviada. Aguardando validação da Qualidade.');
       setTimeout(function(){ hide('view-responder'); show('view-home'); carregarTabelas(); }, 800);
     })
     .responderRNC_Salvar(TOKEN, rnc, { pq1:pq1, pq2:pq2, pq3:pq3, pq4:pq4, pq5:pq5, solucoes:solucoes, validarConclusao:marcarConclusao, acoesConcluidas: acoesConcluidasResp }, anexos, marcarConclusao);
