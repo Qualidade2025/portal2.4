@@ -80,7 +80,7 @@
           <div class="col-12">
             <button class="btn" id="btnSalvarResposta">Responder</button>
             <button class="btn-grey" id="btnImprocedente" style="margin-left:8px">Improcedente</button>
-            <span id="respMsg" class="muted" style="margin-left:8px"></span>
+            <span id="respMsg" class="muted hidden" style="display:none"></span>
           </div>
         </div>
         <div id="improcedenteBox" class="hidden" style="margin-top:10px">
@@ -90,7 +90,7 @@
           <input id="impAnexo" type="file">
           <div>
             <button class="btn" id="btnEnviarImprocedente">Enviar improcedente</button>
-            <span id="respMsgImprocedente" class="muted" style="margin-left:8px"></span>
+            <span id="respMsgImprocedente" class="muted hidden" style="display:none"></span>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@
           <textarea id="retMotivo" placeholder="Descreva o motivo da devolução para correção da abertura."></textarea>
           <div><button class="btn" id="btnEnviarRetorno">Enviar retorno</button></div>
         </div>
-        <div id="qualidadeMsg" class="muted" style="margin-top:8px"></div>
+        <div id="qualidadeMsg" class="muted hidden" style="display:none"></div>
       </div>
 
       <!-- Validação da RESPOSTA/CONCLUSÃO (Qualidade) -->
@@ -157,7 +157,7 @@
             <div><button class="btn" id="btnEnviarRetornoResp2">Enviar retorno</button></div>
           </div>
 
-          <div id="qualidadeMsgResp2" class="muted" style="margin-top:8px"></div>
+          <div id="qualidadeMsgResp2" class="muted hidden" style="display:none"></div>
         </div>
       </div>
 
