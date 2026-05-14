@@ -187,6 +187,139 @@ function parseDateBR(str){
   return (dt.getFullYear() === y && dt.getMonth() === mo && dt.getDate() === d) ? dt : null;
 }
 
+
+
+function formatDateISOToBR(iso){
+  var m = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(iso || '');
+  if (!m) return '';
+  return m[3] + '/' + m[2] + '/' + m[1];
+}
+
+function isHomePeriodColumn(tbl, colIndex){
+  if (!tbl) return false;
+  if (['devTbl','tbl','finTbl'].indexOf(tbl.id) === -1) return false;
+  return [2, 9, 10].indexOf(colIndex) !== -1;
+}
+
+var prazoDateFilterOverlay;
+
+function ensurePrazoDateFilterOverlay(){
+  if (prazoDateFilterOverlay) return prazoDateFilterOverlay;
+
+  var root = document.createElement('div');
+  root.className = 'filter-overlay hidden';
+
+  var backdrop = document.createElement('div');
+  backdrop.className = 'filter-backdrop';
+  root.appendChild(backdrop);
+
+  var dialog = document.createElement('div');
+  dialog.className = 'filter-dialog';
+  root.appendChild(dialog);
+
+  var header = document.createElement('div');
+  header.className = 'filter-header';
+  dialog.appendChild(header);
+
+  var title = document.createElement('h4');
+  title.className = 'filter-title';
+  title.textContent = 'Filtrar por período';
+  header.appendChild(title);
+
+  var closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'btn-grey btn-small filter-close';
+  closeBtn.textContent = '×';
+  header.appendChild(closeBtn);
+
+  var body = document.createElement('div');
+  body.className = 'filter-body';
+  dialog.appendChild(body);
+
+  var hint = document.createElement('div');
+  hint.className = 'muted';
+  hint.textContent = 'Selecione o intervalo de datas para filtrar a coluna de prazo.';
+  body.appendChild(hint);
+
+  var startLabel = document.createElement('label');
+  startLabel.textContent = 'Data inicial';
+  var startInput = document.createElement('input');
+  startInput.type = 'date';
+  body.appendChild(startLabel);
+  body.appendChild(startInput);
+
+  var endLabel = document.createElement('label');
+  endLabel.textContent = 'Data final';
+  var endInput = document.createElement('input');
+  endInput.type = 'date';
+  body.appendChild(endLabel);
+  body.appendChild(endInput);
+
+  var actions = document.createElement('div');
+  actions.className = 'filter-actions';
+  dialog.appendChild(actions);
+
+  var clearBtn = document.createElement('button');
+  clearBtn.type = 'button';
+  clearBtn.className = 'btn-grey';
+  clearBtn.textContent = 'Limpar';
+  actions.appendChild(clearBtn);
+
+  var applyBtn = document.createElement('button');
+  applyBtn.type = 'button';
+  applyBtn.className = 'btn';
+  applyBtn.textContent = 'Aplicar período';
+  actions.appendChild(applyBtn);
+
+  prazoDateFilterOverlay = { root: root, startInput: startInput, endInput: endInput, clearBtn: clearBtn, applyBtn: applyBtn, closeBtn: closeBtn, backdrop: backdrop, currentTable: null, currentCol: null };
+
+  function close(){ prazoDateFilterOverlay.root.classList.add('hidden'); }
+  closeBtn.addEventListener('click', close);
+  backdrop.addEventListener('click', close);
+
+  clearBtn.addEventListener('click', function(){
+    if (!prazoDateFilterOverlay.currentTable) return;
+    var state = getTableFilterState(prazoDateFilterOverlay.currentTable);
+    delete state[prazoDateFilterOverlay.currentCol];
+    applyTableFilters(prazoDateFilterOverlay.currentTable);
+    close();
+  });
+
+  applyBtn.addEventListener('click', function(){
+    if (!prazoDateFilterOverlay.currentTable) return;
+    var state = getTableFilterState(prazoDateFilterOverlay.currentTable);
+    var startBR = formatDateISOToBR(startInput.value);
+    var endBR = formatDateISOToBR(endInput.value);
+    if (!startBR && !endBR){
+      delete state[prazoDateFilterOverlay.currentCol];
+    } else {
+      state[prazoDateFilterOverlay.currentCol] = { type: 'dateRange', start: startBR, end: endBR };
+    }
+    applyTableFilters(prazoDateFilterOverlay.currentTable);
+    close();
+  });
+
+  document.body.appendChild(root);
+  return prazoDateFilterOverlay;
+}
+
+function openPrazoDateFilter(tbl, colIndex){
+  var overlay = ensurePrazoDateFilterOverlay();
+  overlay.currentTable = tbl;
+  overlay.currentCol = colIndex;
+
+  var state = getTableFilterState(tbl);
+  var current = state[colIndex] || {};
+  var hasDateRange = current && current.type === 'dateRange';
+  var start = hasDateRange ? parseDateBR(current.start || '') : null;
+  var end = hasDateRange ? parseDateBR(current.end || '') : null;
+
+  overlay.startInput.value = start ? formatDateInput(start) : '';
+  overlay.endInput.value = end ? formatDateInput(end) : '';
+  overlay.root.classList.remove('hidden');
+  overlay.startInput.focus();
+}
+
 function getSolucoesAtuais(){
   return (CURRENT_RESPOSTA && Array.isArray(CURRENT_RESPOSTA.solucoes)) ? CURRENT_RESPOSTA.solucoes : [];
 }
@@ -462,11 +595,15 @@ function ensureTableFilters(tbl){
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'filter-btn filter-btn-open';
-    btn.innerHTML = '<span class="filter-icon" aria-hidden="true"></span><span class="sr-only">Filtro</span>';
+    btn.innerHTML = (isHomePeriodColumn(tbl, i)
+      ? '<span class="calendar-icon" aria-hidden="true"></span><span class="sr-only">Filtrar período</span>'
+      : '<span class="filter-icon" aria-hidden="true"></span><span class="sr-only">Filtro</span>');
     btn.title = 'Abrir filtro';
     btn.dataset.colIndex = String(i);
+    btn.style.pointerEvents = 'auto';
     btn.addEventListener('click', function(){
       var col = parseInt(this.dataset.colIndex, 10);
+      if (isHomePeriodColumn(tbl, col)) { openPrazoDateFilter(tbl, col); return; }
       openColumnFilter(tbl, col);
     });
     wrap.appendChild(btn);
@@ -477,6 +614,7 @@ function ensureTableFilters(tbl){
     clearBtn.textContent = '×';
     clearBtn.title = 'Limpar filtro';
     clearBtn.dataset.colIndex = String(i);
+    clearBtn.style.pointerEvents = 'auto';
     clearBtn.addEventListener('click', function(){
       var col = parseInt(this.dataset.colIndex, 10);
       var state = getTableFilterState(tbl);
@@ -517,10 +655,20 @@ function applyTableFilters(tbl){
     for (var key in state){
       if (!Object.prototype.hasOwnProperty.call(state, key)) continue;
       var allowed = state[key];
-      if (!(allowed instanceof Set)) continue;
       var colIdx = parseInt(key, 10);
       var val = getCellValue(tr, colIdx);
-      if (allowed.size === 0 || !allowed.has(val)) { visible = false; break; }
+      if (allowed instanceof Set){
+        if (allowed.size === 0 || !allowed.has(val)) { visible = false; break; }
+        continue;
+      }
+      if (allowed && allowed.type === 'dateRange'){
+        var cellDate = parseDateBR(val);
+        var startDate = parseDateBR(allowed.start || '');
+        var endDate = parseDateBR(allowed.end || '');
+        if (!cellDate) { visible = false; break; }
+        if (startDate && cellDate < startDate) { visible = false; break; }
+        if (endDate && cellDate > endDate) { visible = false; break; }
+      }
     }
     tr.style.display = visible ? '' : 'none';
   });
@@ -578,7 +726,8 @@ function updateFilterButtons(tbl){
 
   Array.prototype.forEach.call(headerRow.querySelectorAll('.filter-btn-open, .filter-btn-clear'), function(btn){
     var col = parseInt(btn.dataset.colIndex, 10);
-    var isActive = state[col] instanceof Set;
+    var entry = state[col];
+    var isActive = (entry instanceof Set) || (entry && entry.type === 'dateRange');
     btn.classList.toggle('filter-btn-active', isActive);
     btn.classList.toggle('filter-btn-inactive', !isActive);
   });
