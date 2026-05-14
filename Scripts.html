@@ -651,7 +651,13 @@ function syncStickyHeaderOffsets(tbl){
   // Usa a altura renderizada (com frações) e sobrepõe 2px para eliminar fresta
   // entre cabeçalho e filtros em claro/escuro (inclusive com borda/subpixel).
   var renderedHeaderHeight = Math.ceil(headerRow.getBoundingClientRect().height || headerRow.offsetHeight || 0);
-  var stickyTop = Math.max(renderedHeaderHeight - 2, 0);
+  var wrap = tbl.closest('.table-wrap');
+  var stickyGap = 0;
+  if (wrap) {
+    var parsedGap = parseFloat(window.getComputedStyle(wrap).getPropertyValue('--table-sticky-gap'));
+    stickyGap = Number.isFinite(parsedGap) ? parsedGap : 0;
+  }
+  var stickyTop = Math.max(renderedHeaderHeight - 2 + stickyGap, 0);
   Array.prototype.forEach.call(tbl.querySelectorAll('thead tr.filters-row th'), function(th){
     th.style.top = stickyTop + 'px';
   });
