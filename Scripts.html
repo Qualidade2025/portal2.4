@@ -189,6 +189,14 @@ function parseDateBR(str){
 
 
 
+function formatDateInput(dt){
+  if (!(dt instanceof Date)) return '';
+  var y = dt.getFullYear();
+  var m = String(dt.getMonth() + 1).padStart(2, '0');
+  var d = String(dt.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + d;
+}
+
 function formatDateISOToBR(iso){
   var m = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(iso || '');
   if (!m) return '';
@@ -271,33 +279,19 @@ function ensurePrazoDateFilterOverlay(){
   applyBtn.textContent = 'Aplicar período';
   actions.appendChild(applyBtn);
 
-  prazoDateFilterOverlay = { root: root, startInput: startInput, endInput: endInput, clearBtn: clearBtn, applyBtn: applyBtn, closeBtn: closeBtn, backdrop: backdrop, currentTable: null, currentCol: null };
+  prazoDateFilterOverlay = {
+    root: root,
+    startInput: startInput,
+    endInput: endInput,
+    clearBtn: clearBtn,
+    applyBtn: applyBtn,
+    closeBtn: closeBtn,
+    backdrop: backdrop
+  };
 
-  function close(){ prazoDateFilterOverlay.root.classList.add('hidden'); }
+  function close(){ root.classList.add('hidden'); }
   closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', close);
-
-  clearBtn.addEventListener('click', function(){
-    if (!prazoDateFilterOverlay.currentTable) return;
-    var state = getTableFilterState(prazoDateFilterOverlay.currentTable);
-    delete state[prazoDateFilterOverlay.currentCol];
-    applyTableFilters(prazoDateFilterOverlay.currentTable);
-    close();
-  });
-
-  applyBtn.addEventListener('click', function(){
-    if (!prazoDateFilterOverlay.currentTable) return;
-    var state = getTableFilterState(prazoDateFilterOverlay.currentTable);
-    var startBR = formatDateISOToBR(startInput.value);
-    var endBR = formatDateISOToBR(endInput.value);
-    if (!startBR && !endBR){
-      delete state[prazoDateFilterOverlay.currentCol];
-    } else {
-      state[prazoDateFilterOverlay.currentCol] = { type: 'dateRange', start: startBR, end: endBR };
-    }
-    applyTableFilters(prazoDateFilterOverlay.currentTable);
-    close();
-  });
 
   document.body.appendChild(root);
   return prazoDateFilterOverlay;
@@ -305,9 +299,6 @@ function ensurePrazoDateFilterOverlay(){
 
 function openPrazoDateFilter(tbl, colIndex){
   var overlay = ensurePrazoDateFilterOverlay();
-  overlay.currentTable = tbl;
-  overlay.currentCol = colIndex;
-
   var state = getTableFilterState(tbl);
   var current = state[colIndex] || {};
   var hasDateRange = current && current.type === 'dateRange';
@@ -317,7 +308,27 @@ function openPrazoDateFilter(tbl, colIndex){
   overlay.startInput.value = start ? formatDateInput(start) : '';
   overlay.endInput.value = end ? formatDateInput(end) : '';
   overlay.root.classList.remove('hidden');
-  overlay.startInput.focus();
+
+  overlay.applyBtn.onclick = function(){
+    var startBR = formatDateISOToBR(overlay.startInput.value);
+    var endBR = formatDateISOToBR(overlay.endInput.value);
+    if (!startBR && !endBR){
+      delete state[colIndex];
+    } else {
+      state[colIndex] = { type: 'dateRange', start: startBR, end: endBR };
+    }
+    applyTableFilters(tbl);
+    overlay.root.classList.add('hidden');
+  };
+
+  overlay.clearBtn.onclick = function(){
+    delete state[colIndex];
+    overlay.startInput.value = '';
+    overlay.endInput.value = '';
+    applyTableFilters(tbl);
+    overlay.root.classList.add('hidden');
+  };
+
 }
 
 function getSolucoesAtuais(){
