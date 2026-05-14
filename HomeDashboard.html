@@ -464,10 +464,16 @@
     selectAllWrap.appendChild(selectAll);
     selectAllWrap.appendChild(selectAllLabel);
 
+    var searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'filter-search-input';
+    searchInput.placeholder = 'Digite para filtrar...';
+
     var optionsWrap = document.createElement('div');
     optionsWrap.className = 'filter-options';
 
     body.appendChild(selectAllWrap);
+    body.appendChild(searchInput);
     body.appendChild(optionsWrap);
 
     var actions = document.createElement('div');
@@ -498,6 +504,7 @@
     fornecedorFilterOverlay = {
       root: root,
       optionsWrap: optionsWrap,
+      searchInput: searchInput,
       selectAll: selectAll,
       applyBtn: applyBtn,
       clearBtn: clearBtn
@@ -531,15 +538,41 @@
     });
 
     function syncSelectAll(){
-      var allChecked = optionCheckboxes.every(function(cb){ return cb.checked; });
-      selectAll.checked = allChecked;
+      var visible = optionCheckboxes.filter(function(cb){
+        var row = cb.closest('.filter-option');
+        return !row || row.style.display !== 'none';
+      });
+      if (!visible.length){
+        selectAll.checked = false;
+        return;
+      }
+      selectAll.checked = visible.every(function(cb){ return cb.checked; });
+    }
+
+    overlay.searchInput.value = '';
+
+    function refreshSearch(){
+      var term = (overlay.searchInput.value || '').toLowerCase().trim();
+      optionCheckboxes.forEach(function(cb){
+        var row = cb.closest('.filter-option');
+        var labelEl = row ? row.querySelector('.filter-option-label') : null;
+        var txt = labelEl ? (labelEl.textContent || '').toLowerCase() : '';
+        var visible = !term || txt.indexOf(term) !== -1;
+        if (row) row.style.display = visible ? '' : 'none';
+      });
+      syncSelectAll();
     }
 
     syncSelectAll();
+    refreshSearch();
 
     selectAll.onchange = function(){
       var checked = selectAll.checked;
-      optionCheckboxes.forEach(function(cb){ cb.checked = checked; });
+      optionCheckboxes.forEach(function(cb){
+        var row = cb.closest('.filter-option');
+        if (row && row.style.display === 'none') return;
+        cb.checked = checked;
+      });
     };
 
     optionCheckboxes.forEach(function(cb){
@@ -547,6 +580,8 @@
         syncSelectAll();
       };
     });
+
+  overlay.searchInput.oninput = refreshSearch;
 
     if (overlay.clearBtn){
       overlay.clearBtn.onclick = function(){
@@ -558,8 +593,14 @@
     }
 
     overlay.applyBtn.onclick = function(){
+      var hasSearchTerm = !!(overlay.searchInput && overlay.searchInput.value && overlay.searchInput.value.trim());
       var values = optionCheckboxes
-        .filter(function(cb){ return cb.checked; })
+        .filter(function(cb){
+          if (!cb.checked) return false;
+          if (!hasSearchTerm) return true;
+          var row = cb.closest('.filter-option');
+          return !row || row.style.display !== 'none';
+        })
         .map(function(cb){ return cb.value; });
 
       if (values.length === options.length || values.length === 0){
@@ -573,6 +614,7 @@
     };
 
     overlay.root.classList.remove('hidden');
+    overlay.searchInput.focus();
   }
 
   function filterRowsByAbertura(rows, filters){
