@@ -1114,6 +1114,75 @@ function endGlobalLoading(){
   if (loadingModal) loadingModal.classList.add('hidden');
 }
 
+var HOME_CELL_TOOLTIP = null;
+
+function ensureHomeCellTooltip(){
+  if (HOME_CELL_TOOLTIP && document.body.contains(HOME_CELL_TOOLTIP)) return HOME_CELL_TOOLTIP;
+  var el = document.createElement('div');
+  el.id = 'homeCellTooltip';
+  el.className = 'home-cell-tooltip hidden';
+  document.body.appendChild(el);
+  HOME_CELL_TOOLTIP = el;
+  return el;
+}
+
+function hideHomeCellTooltip(){
+  var el = ensureHomeCellTooltip();
+  el.classList.add('hidden');
+  el.textContent = '';
+}
+
+function moveHomeCellTooltip(ev){
+  var el = ensureHomeCellTooltip();
+  if (el.classList.contains('hidden')) return;
+  var offset = 12;
+  var x = ev.clientX + offset;
+  var y = ev.clientY + offset;
+  var maxX = window.innerWidth - el.offsetWidth - 8;
+  var maxY = window.innerHeight - el.offsetHeight - 8;
+  el.style.left = Math.max(8, Math.min(x, maxX)) + 'px';
+  el.style.top = Math.max(8, Math.min(y, maxY)) + 'px';
+}
+
+function showHomeCellTooltip(td, ev){
+  var text = td.getAttribute('data-full-text') || '';
+  if (!text) return;
+  var el = ensureHomeCellTooltip();
+  el.textContent = text;
+  el.classList.remove('hidden');
+  moveHomeCellTooltip(ev);
+}
+
+function applyTruncatedCellTooltip(tableEl){
+  if (!tableEl) return;
+  var cells = tableEl.querySelectorAll('tbody td');
+  Array.prototype.forEach.call(cells, function(td){
+    td.classList.remove('is-truncated');
+    td.removeAttribute('data-full-text');
+    td.onmouseenter = null;
+    td.onmousemove = null;
+    td.onmouseleave = null;
+    var txt = (td.textContent || '').trim();
+    if (!txt) return;
+    if (td.scrollWidth > td.clientWidth + 1){
+      td.classList.add('is-truncated');
+      td.setAttribute('data-full-text', txt);
+      td.onmouseenter = function(ev){ showHomeCellTooltip(td, ev); };
+      td.onmousemove = moveHomeCellTooltip;
+      td.onmouseleave = hideHomeCellTooltip;
+    }
+  });
+}
+
+function refreshHomeTruncatedTooltips(){
+  ['devTbl','tbl','finTbl'].forEach(function(id){
+    var t = document.getElementById(id);
+    if (t && !t.classList.contains('hidden')) applyTruncatedCellTooltip(t);
+  });
+}
+
+window.addEventListener('resize', function(){ hideHomeCellTooltip(); refreshHomeTruncatedTooltips(); });
+
 /* ================== HOME: carregar os 2 paineis ================== */
 function carregarTabelas(){
   updateCountLabel('devCount', 0);
@@ -1192,6 +1261,7 @@ function carregarDevolucoes(){
       });
       applyTableFilters(devTbl);
       devTbl.classList.remove('hidden');
+      applyTruncatedCellTooltip(devTbl);
             updateHomeTableVerticalScroll(devTbl);
     })
     .listarDevolucoesDoUsuario(TOKEN);
@@ -1327,6 +1397,7 @@ function carregarRNCs(){
 
       applyTableFilters(tbl);
       tbl.classList.remove('hidden');
+      applyTruncatedCellTooltip(tbl);
             updateHomeTableVerticalScroll(tbl);
     })
     .listarRNCsDoUsuario(TOKEN);
@@ -1412,6 +1483,7 @@ function carregarFinalizadas(){
 
       applyTableFilters(finTbl);
       finTbl.classList.remove('hidden');
+      applyTruncatedCellTooltip(finTbl);
             updateHomeTableVerticalScroll(finTbl);
     })
     .listarRNCsFinalizadas(TOKEN);
