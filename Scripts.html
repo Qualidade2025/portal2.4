@@ -726,7 +726,8 @@ function updateHomeTableVerticalScroll(tbl){
     return;
   }
 
-  wrap.style.maxHeight = (headerHeight + rowsHeight + 2) + 'px';
+  // margem extra para evitar corte parcial da 10ª linha por arredondamento/subpixel
+  wrap.style.maxHeight = (headerHeight + rowsHeight + 25) + 'px';
 }
 
 function updateFilterButtons(tbl){
