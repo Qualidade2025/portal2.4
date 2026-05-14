@@ -108,9 +108,13 @@
   :is(#devTbl,#tbl,#finTbl) tbody td:nth-child(10),
   :is(#devTbl,#tbl,#finTbl) tbody td:nth-child(11),
   :is(#devTbl,#tbl,#finTbl) tbody td:nth-child(12){text-align:center}
-  tbody td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top;word-break:break-word;white-space:normal}
+  :is(#devTbl,#tbl,#finTbl) tbody td{border-bottom:1px solid var(--border);padding:8px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;height:27px;line-height:16px}
   tbody tr:hover{background:var(--row-hover)}
   .nowrap{white-space:nowrap}
+
+  :is(#devTbl,#tbl,#finTbl) tbody td.is-truncated{cursor:help}
+  .home-cell-tooltip{position:fixed;left:0;top:0;max-width:min(420px,70vw);padding:10px 12px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);border-radius:0;box-shadow:0 4px 12px rgba(0,0,0,.18);white-space:normal;word-break:break-word;line-height:1.35;z-index:9999;pointer-events:none}
+  .home-cell-tooltip.hidden{display:none}
   .link{color:var(--link);text-decoration:underline;cursor:pointer}
 
   /* Responder: layout em 2 metades (50% + 50%) */
