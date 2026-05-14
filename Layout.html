@@ -86,10 +86,11 @@
 
 
   /* Tabela dashboard */
-  .table-wrap{overflow:auto;position:relative}
+  .table-wrap{--table-sticky-gap:8px;overflow:auto;position:relative}
+  .table-wrap::before{content:'';position:sticky;top:0;display:block;height:var(--table-sticky-gap);background:var(--surface);z-index:2;pointer-events:none}
   table{border-collapse:collapse;width:100%;min-width:1750px;table-layout:fixed}
-  thead th{position:sticky;top:0;background:var(--primary);color:var(--primary-contrast);padding:10px;font-weight:600;text-align:center;word-break:break-word;z-index:3}
-  thead tr.filters-row th{top:44px;background:var(--surface-muted);color:var(--text);padding:6px;text-align:center;z-index:2}
+  thead th{position:sticky;top:var(--table-sticky-gap);background:var(--primary);color:var(--primary-contrast);padding:10px;font-weight:600;text-align:center;word-break:break-word;z-index:4}
+  thead tr.filters-row th{top:calc(44px + var(--table-sticky-gap));background:var(--surface-muted);color:var(--text);padding:6px;text-align:center;z-index:3}
   .column-filter{width:100%;padding:6px 8px;border:1px solid var(--border-strong);border-radius:6px;font-size:12px;box-sizing:border-box;background:var(--surface);color:var(--text)}
   .filter-btn-group{display:inline-flex;gap:6px;align-items:center;justify-content:center;width:100%}
   .filter-btn{padding:6px 8px;border-radius:6px;font-size:11px;line-height:1.2;border:1px solid transparent;cursor:pointer;min-width:32px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
