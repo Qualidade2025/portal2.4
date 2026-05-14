@@ -8,6 +8,7 @@ var ANEXOS_ABERTURA = [], ANEXOS_RESPOSTA = [], ANEXOS_CONCLUSAO = [], ANEXOS_IM
 var LAST_DEV_ROWS = [], LAST_PEND_ROWS = [], LAST_ALL_ROWS = [], LAST_RNC_ROWS = [];
 var CURRENT_RESPOSTA = null, CURRENT_VALIDACAO_CONCLUSAO = null;
 var selecionarConclusaoResolver = null;
+var confirmarAnexoRespostaResolver = null;
 var THEME_KEY = 'portal-theme';
 
 function getSystemTheme(){
@@ -2162,6 +2163,27 @@ function solicitarSelecaoConclusao(itens, titulo, infoMsg){
   });
 }
 
+function abrirConfirmarAnexoRespostaModal(){
+  var modal = document.getElementById('confirmarAnexoRespostaModal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function fecharConfirmarAnexoRespostaModal(confirmado){
+  var modal = document.getElementById('confirmarAnexoRespostaModal');
+  if (modal) modal.classList.add('hidden');
+  if (typeof confirmarAnexoRespostaResolver === 'function'){
+    confirmarAnexoRespostaResolver(!!confirmado);
+    confirmarAnexoRespostaResolver = null;
+  }
+}
+
+function solicitarConfirmacaoAnexoResposta(){
+  return new Promise(function(resolve){
+    confirmarAnexoRespostaResolver = resolve;
+    abrirConfirmarAnexoRespostaModal();
+  });
+}
+
 /* ================== CRIAR / CORRIGIR: enviar ================== */
 async function enviarCriar(){
   var btnEnviar = document.getElementById('btnEnviar');
@@ -2456,8 +2478,11 @@ document.getElementById('btnSalvarResposta').onclick = async function(){
     return;
   }
   if (!concluida && files && files.length){
-    setRespMsg('Para enviar evidência de conclusão, marque o checkbox "Ações já foram concluídas".');
-    return;
+    var confirmouAnexoResposta = await solicitarConfirmacaoAnexoResposta();
+    if (!confirmouAnexoResposta){
+      setRespMsg('Envio cancelado.');
+      return;
+    }
   }
   for (var i=0;i<files.length;i++){
     if (files[i].size > 10*1024*1024){
@@ -2798,6 +2823,15 @@ if (btnCancelarSelecaoConclusao) btnCancelarSelecaoConclusao.onclick = cancelarS
 
 var btnConfirmarSelecaoConclusao = document.getElementById('btnConfirmarSelecaoConclusao');
 if (btnConfirmarSelecaoConclusao) btnConfirmarSelecaoConclusao.onclick = confirmarSelecaoConclusao;
+
+var btnConfirmarAnexoRespostaSim = document.getElementById('btnConfirmarAnexoRespostaSim');
+if (btnConfirmarAnexoRespostaSim) btnConfirmarAnexoRespostaSim.onclick = function(){ fecharConfirmarAnexoRespostaModal(true); };
+
+var btnConfirmarAnexoRespostaNao = document.getElementById('btnConfirmarAnexoRespostaNao');
+if (btnConfirmarAnexoRespostaNao) btnConfirmarAnexoRespostaNao.onclick = function(){ fecharConfirmarAnexoRespostaModal(false); };
+
+var btnFecharConfirmarAnexoResposta = document.getElementById('btnFecharConfirmarAnexoResposta');
+if (btnFecharConfirmarAnexoResposta) btnFecharConfirmarAnexoResposta.onclick = function(){ fecharConfirmarAnexoRespostaModal(false); };
 
 /* ================== VISUALIZAR ================== */
 function abrirVisualizar(rnc, ano, mes){
