@@ -288,6 +288,12 @@ function buildColumnFilterOverlay(){
   selectAllWrap.appendChild(selectAllText);
   body.appendChild(selectAllWrap);
 
+  var searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'filter-search-input';
+  searchInput.placeholder = 'Digite para filtrar...';
+  body.appendChild(searchInput);
+
   var optionsWrap = document.createElement('div');
   optionsWrap.className = 'filter-options';
   body.appendChild(optionsWrap);
@@ -311,6 +317,7 @@ function buildColumnFilterOverlay(){
   columnFilterOverlay = {
     root: root,
     title: title,
+    searchInput: searchInput,
     optionsWrap: optionsWrap,
     selectAll: selectAllInput,
     applyBtn: applyBtn,
@@ -333,9 +340,15 @@ function buildColumnFilterOverlay(){
   applyBtn.addEventListener('click', function(){
     if (!columnFilterOverlay.currentTable) return;
     var checkboxes = columnFilterOverlay.optionsWrap.querySelectorAll('input[type="checkbox"]');
+    var hasSearchTerm = !!(columnFilterOverlay.searchInput && columnFilterOverlay.searchInput.value && columnFilterOverlay.searchInput.value.trim());
     var selected = [];
     Array.prototype.forEach.call(checkboxes, function(cb){
-      if (cb.checked) selected.push(cb.value);
+      if (!cb.checked) return;
+      if (hasSearchTerm){
+        var option = cb.closest('.filter-option');
+        if (option && option.style.display === 'none') return;
+      }
+      selected.push(cb.value);
     });
     var state = getTableFilterState(columnFilterOverlay.currentTable);
     if (selected.length === columnFilterOverlay.currentValues.length){
@@ -347,12 +360,38 @@ function buildColumnFilterOverlay(){
     closeColumnFilterOverlay();
   });
   selectAllInput.addEventListener('change', function(){
-    var checkboxes = columnFilterOverlay.optionsWrap.querySelectorAll('input[type="checkbox"]');
-    Array.prototype.forEach.call(checkboxes, function(cb){ cb.checked = selectAllInput.checked; });
+    var options = columnFilterOverlay.optionsWrap.querySelectorAll('.filter-option');
+    Array.prototype.forEach.call(options, function(opt){
+      if (opt.style.display === 'none') return;
+      var cb = opt.querySelector('input[type="checkbox"]');
+      if (cb) cb.checked = selectAllInput.checked;
+    });
   });
+  searchInput.addEventListener('input', updateFilterOptionsVisibility);
 
   document.body.appendChild(root);
   return columnFilterOverlay;
+}
+
+function updateFilterOptionsVisibility(){
+  if (!columnFilterOverlay) return;
+  var term = (columnFilterOverlay.searchInput.value || '').toLowerCase().trim();
+  var options = columnFilterOverlay.optionsWrap.querySelectorAll('.filter-option');
+  var visibleCheckboxes = [];
+  Array.prototype.forEach.call(options, function(opt){
+    var textEl = opt.querySelector('.filter-option-label');
+    var label = textEl ? (textEl.textContent || '') : '';
+    var visible = !term || label.toLowerCase().indexOf(term) !== -1;
+    opt.style.display = visible ? '' : 'none';
+    if (!visible) return;
+    var cb = opt.querySelector('input[type="checkbox"]');
+    if (cb) visibleCheckboxes.push(cb);
+  });
+  var allVisibleChecked = visibleCheckboxes.length > 0;
+  Array.prototype.forEach.call(visibleCheckboxes, function(cb){
+    if (!cb.checked) allVisibleChecked = false;
+  });
+  columnFilterOverlay.selectAll.checked = visibleCheckboxes.length > 0 && allVisibleChecked;
 }
 
 function closeColumnFilterOverlay(){
@@ -370,6 +409,7 @@ function openColumnFilter(tbl, colIndex){
   var headerCell = headerRow && headerRow.children ? headerRow.children[colIndex] : null;
   overlay.title.textContent = headerCell ? (headerCell.textContent.trim() || 'Filtro') : 'Filtro';
 
+  overlay.searchInput.value = '';
   overlay.optionsWrap.innerHTML = '';
 
   var state = getTableFilterState(tbl);
@@ -392,7 +432,9 @@ function openColumnFilter(tbl, colIndex){
     overlay.optionsWrap.appendChild(opt);
   });
 
+  updateFilterOptionsVisibility();
   overlay.root.classList.remove('hidden');
+  overlay.searchInput.focus();
 }
 
 function ensureTableFilters(tbl){
