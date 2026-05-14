@@ -667,6 +667,7 @@ function applyTableFilters(tbl){
   if (!tbl) return;
   var state = getTableFilterState(tbl);
   var rows = tbl.querySelectorAll('tbody tr');
+  var visibleCount = 0;
   Array.prototype.forEach.call(rows, function(tr){
     var visible = true;
     for (var key in state){
@@ -688,10 +689,24 @@ function applyTableFilters(tbl){
       }
     }
     tr.style.display = visible ? '' : 'none';
+    if (visible) visibleCount++;
   });
 
+  updateHomeBlockCountFromTable(tbl, visibleCount);
   updateFilterButtons(tbl);
-    updateHomeTableVerticalScroll(tbl);
+  updateHomeTableVerticalScroll(tbl);
+}
+
+function updateHomeBlockCountFromTable(tbl, visibleCount){
+  if (!tbl) return;
+  var countLabelByTable = {
+    devTbl: 'devCount',
+    tbl: 'pendCount',
+    finTbl: 'finCount'
+  };
+  var countId = countLabelByTable[tbl.id];
+  if (!countId) return;
+  updateCountLabel(countId, visibleCount || 0);
 }
 
 function updateHomeTableVerticalScroll(tbl){
